@@ -27,7 +27,9 @@ jobs:
       - name: Configure K2P Board & Lightweight OpenVPN Template
         run: |
           cd padavan/trunk
-          mkdir -p configs/boards/K2P
+          if [ ! -d "configs/boards/K2P" ]; then
+            cp -r configs/boards/NEWIFI3 configs/boards/K2P
+          fi
 
           cat << 'EOF' > configs/boards/K2P/board.mk
           BOARD_NAME = K2P

@@ -27,8 +27,12 @@ jobs:
       - name: Configure K2P Board & Lightweight OpenVPN Template
         run: |
           cd padavan/trunk
-          if [ ! -d "configs/boards/K2P" ]; then
-            cp -r configs/boards/NEWIFI3 configs/boards/K2P
+          mkdir -p configs/boards/K2P
+
+          # البحث التلقائي عن ملف نواة MT7621 ونسخه لمجلد K2P
+          KERNEL_CFG=$(find configs/boards -name "kernel-4.4.x.ram.config" | head -n 1)
+          if [ -n "$KERNEL_CFG" ]; then
+            cp "$KERNEL_CFG" configs/boards/K2P/kernel-4.4.x.ram.config
           fi
 
           cat << 'EOF' > configs/boards/K2P/board.mk
@@ -74,12 +78,16 @@ jobs:
           #undef  BOARD_GPIO_PWR_USB
           EOF
 
-          cat << 'EOF' > configs/templates/K2P.config
+          # استخدام قالب K2P الأصلي من المستودع وتخصيصه ليكون خفيفاً ويدعم OpenVPN الحديث
+          BASE_TPL=$(find configs/templates -iname "*k2p*.config" | head -n 1)
+          if [ -n "$BASE_TPL" ]; then
+            cp "$BASE_TPL" configs/templates/K2P.config
+          else
+            cat << 'EOF' > configs/templates/K2P.config
           CONFIG_VENDOR=Ralink
           CONFIG_PRODUCT=MT7621
           CONFIG_FIRMWARE_PRODUCT_ID="K2P"
           CONFIG_LINUXDIR=linux-4.4.x
-          CONFIG_TOOLCHAIN_DIR=${{ github.workspace }}/padavan/toolchain-mipsel/toolchain-4.4.x
           CONFIG_FIRMWARE_TYPE_ROOTFS_IN_RAM=y
           CONFIG_FIRMWARE_ROOTFS_IN_RAM_SIZE=32768
           CONFIG_FIRMWARE_ENABLE_SQUASHFS=y
@@ -92,6 +100,12 @@ jobs:
           CONFIG_RAETH_GMAC2=y
           CONFIG_MAC_TO_GIGAPHY_MODE_ADDR2=0x1f
           CONFIG_RAETH_ESW=y
+          EOF
+          fi
+
+          sed -i '/CONFIG_TOOLCHAIN_DIR/d' configs/templates/K2P.config
+          cat << 'EOF' >> configs/templates/K2P.config
+          CONFIG_TOOLCHAIN_DIR=${{ github.workspace }}/padavan/toolchain-mipsel/toolchain-4.4.x
           CONFIG_FIRMWARE_INCLUDE_OPENVPN=y
           CONFIG_FIRMWARE_INCLUDE_OPENSSL_EXE=y
           CONFIG_FIRMWARE_INCLUDE_LZO=y
